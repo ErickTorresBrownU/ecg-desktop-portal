@@ -34,7 +34,6 @@ fn setup_csv_file() -> PathBuf {
         num += 1;
     }
 
-    // When user plugs in arduino
     File::create(&file_path).unwrap();
 
     file_path
@@ -80,7 +79,7 @@ fn main_backend(app_handle: AppHandle) {
         let mut time_of_last_ok = Instant::now();
 
         const MAX_TIME_WITHOUT_VERIFICATION_MILLIS: u64 = 1000;
-        const VERIFICATION_INTERVAL_MILIS: u64 = MAX_TIME_WITHOUT_VERIFICATION_MILLIS / 2;
+        const VERIFICATION_INTERVAL_MILLIS: u64 = MAX_TIME_WITHOUT_VERIFICATION_MILLIS / 2;
 
         'outer: loop {
             let ports = serialport::available_ports().unwrap();
@@ -104,7 +103,7 @@ fn main_backend(app_handle: AppHandle) {
                 };
             }
 
-            if time_of_last_ok.elapsed().as_millis() >= VERIFICATION_INTERVAL_MILIS.into() {
+            if time_of_last_ok.elapsed().as_millis() >= VERIFICATION_INTERVAL_MILLIS.into() {
                 time_of_last_ok = Instant::now();
 
                 let ok_state = serial_port.as_mut().unwrap().write("OK\n".as_bytes());
