@@ -206,4 +206,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+
+    dbg!("Shut down");
 }
