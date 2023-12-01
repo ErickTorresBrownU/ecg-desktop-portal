@@ -8,21 +8,7 @@ type EcgReading = {
     value: number;
 };
 
-class Timer {
-    startMs: number;
-    title: string;
-
-    constructor(title: string) {
-        this.startMs = Date.now();
-        this.title = title;
-    }
-
-    stop(): void {
-        console.info(`${this.title}: ${Date.now() - this.startMs}`);
-    }
-}
-
-export const DemoTwo = () => {
+export const Demo = () => {
     const [ecgData, setEcgData] = useState<EcgReading[]>([]);
     const [traditionalData, setTraditionalData] = useState<{ sweepLength: number, data: EcgReading[]; }>({ sweepLength: 0, data: [] });
     const [timeDelta, setTimeDelta] = useState(0);
@@ -84,7 +70,6 @@ export const DemoTwo = () => {
 
     useEffect(() => {
         setTraditionalData(old => {
-            // const t = new Timer("traditionalData");
             if (ecgData.length == 0) {
                 return old;
             }
@@ -105,21 +90,15 @@ export const DemoTwo = () => {
                 });
             });
 
-            const returnValue = {
+            return {
                 sweepLength: left.length,
                 data: [...left, ...old.data.filter(reading => reading.milliseconds > latest)]
             };
-
-            // t.stop();
-
-            return returnValue;
         });
     }, [timeDelta]);
 
     const constrainToTimeRange = (arr: EcgReading[]) => {
-        // const t = new Timer("constrainToTimeRange");
         const constrained = arr.filter(reading => reading.milliseconds < arr[0].milliseconds + timeDelta && reading.milliseconds > arr[arr.length - 1].milliseconds - INTERVAL_MILLIS);
-        // t.stop();
 
         return constrained;
     };
@@ -167,101 +146,16 @@ export const DemoTwo = () => {
         return ({ x: new Date(reading.milliseconds), y: DEBUG ? reading.value : yValue });
     });
 
-    const a = traditional.slice(0, traditionalData.sweepLength);
-    const b = traditional.slice(traditionalData.sweepLength);
-
     return (
         <div className="flex flex-row w-full h-52">
-            <div className="flex flex-col w-full h-full" /* tabIndex={0} onKeyDown={(event) => {
-                console.log(event.key);
-
-                if (event.key === 'p') {
-                    console.log(a, b);
-                }
-            }} */>
-                {/* <div className="w-full h-96">
-                    <ResponsiveLineCanvas
-                        {...commonProperties}
-                        margin={{ top: 30, right: 50, bottom: 60, left: 50 }}
-                        data={[
-                            { id: 'A', data: data },
-                        ]}
-                        xScale={{ type: 'time', format: 'native' }}
-                        yScale={{ type: 'linear', max: chartBounds.max, min: chartBounds.min }}
-                        axisTop={{
-                            tickValues,
-                            format: "%H:%M:%S",
-                        }}
-                        axisBottom={{
-                            tickValues,
-                            format: "%H:%M:%S",
-                        }}
-                        axisRight={{}}
-                        colors={"#36ea5b"}
-                        enablePoints={false}
-                        enableGridX={true}
-                        curve="monotoneX"
-                        isInteractive={false}
-                        enableSlices={false}
-                        theme={{
-                            axis: { ticks: { text: { fontSize: 14 } } },
-                            grid: { line: { stroke: '#ddd', strokeDasharray: '1 2' } },
-                        }}
-                    />
-                </div>
-                <div className="w-full h-96">
-                    <ResponsiveLineCanvas
-                        {...commonProperties}
-                        margin={{ top: 30, right: 50, bottom: 60, left: 50 }}
-                        data={[
-                            {
-                                id: 'A', data: signals.map((signal, i) => {
-                                    return ({
-                                        x: data[i].x,
-                                        y: signal
-                                    });
-                                })
-                            },
-                        ]}
-                        xScale={{ type: 'time', format: 'native' }}
-                        yScale={{ type: 'linear', max: 1.5, min: -1 }}
-                        axisTop={{
-                            tickValues,
-                            format: "%H:%M:%S",
-                        }}
-                        axisBottom={{
-                            tickValues,
-                            format: "%H:%M:%S",
-                        }}
-                        axisRight={{}}
-                        colors={"#36ea5b"}
-                        enablePoints={false}
-                        enableGridX={true}
-                        curve="monotoneX"
-                        isInteractive={false}
-                        enableSlices={false}
-                        theme={{
-                            axis: { ticks: { text: { fontSize: 14 } } },
-                            grid: { line: { stroke: '#ddd', strokeDasharray: '1 2' } },
-                        }}
-                    />
-                </div> */}
+            <div className="flex flex-col w-full h-full">
                 <div className="flex-grow h-full">
                     <ResponsiveLineCanvas
                         {...commonProperties}
                         margin={{ top: 30, right: 50, bottom: 60, left: 50 }}
                         data={[
-                            // {
-                            //     id: 'A', data: a, color: "#ff0000"
-                            // },
-                            // {
-                            //     id: 'B', data: b, color: "#00ff00"
-                            // },
-                            // {
-                            //     id: 'D', data: []
-                            // },
                             {
-                                id: 'C', data: traditional, color: "#0000ff"
+                                id: 'A', data: traditional, color: "#0000ff"
                             }
                         ]}
                         xScale={{ type: 'time', min: new Date(0), max: new Date(INTERVAL_MILLIS) }}

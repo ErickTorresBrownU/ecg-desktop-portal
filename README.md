@@ -1,7 +1,11 @@
-# Tauri + React + Typescript
+Pre-requisites for working on this program are:
+Rust programming language
+NodeJs + NPM
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+To run the program in development mode for the first time:
+Execute `npm i` to install the necessary Node packages *and*
+Execute `npm run tauri dev` to run the application.
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+After the necessary packages are installed using `npm i`,
+running `npm i` is only necessary if new packages are added to `package.json`.
+Otherwise, you can simply execute `npm run tauri dev`.
