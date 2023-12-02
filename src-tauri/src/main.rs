@@ -9,7 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use chrono::Local;
+use chrono::{DateTime, Local, NaiveDateTime};
 use serialport::SerialPort;
 use tauri::{AppHandle, Manager};
 
@@ -39,6 +39,38 @@ fn setup_csv_file() -> PathBuf {
     file_path
 }
 
+fn read_line_from_serial(serial_port: &mut Option<Box<dyn SerialPort>>) -> Result<String, ()> {
+    let mut string_buffer = String::new();
+
+    let mut one_byte_buffer = [0; 1];
+
+    loop {
+        if serial_port
+            .as_mut()
+            .unwrap()
+            .read_exact(&mut one_byte_buffer)
+            .is_err()
+        {
+            dbg!("Failed to read into buffer");
+
+            return Err(());
+        }
+
+        let read_chacter = match std::str::from_utf8(&one_byte_buffer) {
+            Ok(character) => character,
+            Err(_) => continue,
+        };
+
+        string_buffer.push_str(read_chacter);
+
+        if read_chacter == "\n" {
+            break;
+        }
+    }
+
+    return Ok(string_buffer);
+}
+
 fn parse_serial_entry(serial_entry: &str) -> Result<EcgReading, ()> {
     if serial_entry.is_empty() {
         return Err(());
@@ -66,12 +98,17 @@ fn parse_serial_entry(serial_entry: &str) -> Result<EcgReading, ()> {
     })
 }
 
+macro_rules! nullify_and_skip {
+    ($value: expr) => {
+        $value = None;
+        continue;
+    };
+}
+
 fn main_backend(app_handle: AppHandle) {
     thread::spawn(move || {
-        let file_path = setup_csv_file();
-
-        // TODO: Add functionality such that when USB is unplugged, csv buffer is closed, a new file is opened, and writing starts with new "connection"
-        let mut csv_writer = csv::Writer::from_path(&file_path).unwrap();
+        let mut csv_writer: Option<csv::Writer<File>> = None;
+        let mut csv_writer_been_flushed = false;
 
         let mut time_offsets: Option<(i64, i64)> = None;
 
@@ -81,24 +118,38 @@ fn main_backend(app_handle: AppHandle) {
         const MAX_TIME_WITHOUT_VERIFICATION_MILLIS: u64 = 1000;
         const VERIFICATION_INTERVAL_MILLIS: u64 = MAX_TIME_WITHOUT_VERIFICATION_MILLIS / 2;
 
-        'outer: loop {
-            let ports = serialport::available_ports().unwrap();
-
-            if ports.len() == 0 {
-                continue;
-            }
-
+        loop {
             if serial_port.is_none() {
-                let port_builder = serialport::new(&ports.get(0).unwrap().port_name, 57600)
+                if let Some(ref mut csv_writer) = csv_writer {
+                    if !csv_writer_been_flushed {
+                        // TODO: handle this result
+                        dbg!("Flushing");
+                        let _ = csv_writer.flush();
+
+                        csv_writer_been_flushed = true;
+                    }
+                }
+
+                let ports = serialport::available_ports().unwrap();
+
+                if ports.len() == 0 {
+                    continue;
+                }
+
+                app_handle.emit_all("reset-monitor", ()).unwrap();
+
+                let port_config = serialport::new(&ports.get(0).unwrap().port_name, 57600)
                     .timeout(Duration::from_secs(3));
 
-                let opened = port_builder.clone().open();
+                match port_config.open() {
+                    Ok(port) => {
+                        serial_port = Some(port);
 
-                match opened {
-                    Ok(port) => serial_port = Some(port),
+                        csv_writer = Some(csv::Writer::from_path(setup_csv_file()).unwrap());
+                        csv_writer_been_flushed = false;
+                    }
                     Err(_) => {
-                        serial_port = None;
-                        continue;
+                        nullify_and_skip!(serial_port);
                     }
                 };
             }
@@ -111,42 +162,31 @@ fn main_backend(app_handle: AppHandle) {
                 if ok_state.is_err() {
                     dbg!("Couldn't Write");
 
-                    serial_port = None;
-                    continue;
+                    nullify_and_skip!(serial_port);
                 }
             }
 
-            let mut string_buffer = String::new();
+            let line = if let Ok(line) = read_line_from_serial(&mut serial_port) {
+                line
+            } else {
+                nullify_and_skip!(serial_port);
+            };
 
-            let mut one_byte_buffer = [0; 1];
+            let parsed_entry = parse_serial_entry(line.trim());
 
-            loop {
-                if serial_port
-                    .as_mut()
-                    .unwrap()
-                    .read_exact(&mut one_byte_buffer)
-                    .is_err()
-                {
-                    dbg!("Failed to read into buffer");
-                    serial_port = None;
-                    continue 'outer;
-                }
+            if parsed_entry.is_err() {
+                app_handle
+                    .emit_all(
+                        "new-reading",
+                        EcgReading {
+                            milliseconds: Local::now().timestamp_millis(),
+                            value: 0.,
+                        },
+                    )
+                    .unwrap();
 
-                let read_chacter = match std::str::from_utf8(&one_byte_buffer) {
-                    Ok(character) => character,
-                    Err(_) => continue,
-                };
-
-                string_buffer.push_str(read_chacter);
-
-                if read_chacter == "\n" {
-                    break;
-                }
+                continue;
             }
-
-            let value_reading = string_buffer.trim();
-
-            let parsed_entry = parse_serial_entry(value_reading);
 
             if let Ok(non_offset_reading) = parsed_entry {
                 if time_offsets.is_none() {
@@ -163,14 +203,14 @@ fn main_backend(app_handle: AppHandle) {
                     value: non_offset_reading.value,
                 };
 
-                let test = EcgReading {
-                    milliseconds: Local::now().timestamp_millis(),
-                    value: non_offset_reading.value,
-                };
+                // let test = EcgReading {
+                //     milliseconds: Local::now().timestamp_millis(),
+                //     value: non_offset_reading.value,
+                // };
 
-                app_handle.emit_all("new-reading", test).unwrap();
-
-                use chrono::{DateTime, NaiveDateTime};
+                app_handle
+                    .emit_all("new-reading", non_offset_reading)
+                    .unwrap();
 
                 let date: DateTime<Local> = DateTime::from_naive_utc_and_offset(
                     NaiveDateTime::from_timestamp_millis(offset_reading.milliseconds).unwrap(),
@@ -178,17 +218,9 @@ fn main_backend(app_handle: AppHandle) {
                 );
 
                 csv_writer
+                    .as_mut()
+                    .unwrap()
                     .write_record(&[date.to_rfc3339(), offset_reading.value.to_string()])
-                    .unwrap();
-            } else {
-                app_handle
-                    .emit_all(
-                        "new-reading",
-                        EcgReading {
-                            milliseconds: Local::now().timestamp_millis(),
-                            value: 0.,
-                        },
-                    )
                     .unwrap();
             }
         }
@@ -206,6 +238,4 @@ fn main() {
         .invoke_handler(tauri::generate_handler![])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-
-    dbg!("Shut down");
 }

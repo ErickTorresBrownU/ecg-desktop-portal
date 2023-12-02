@@ -11,7 +11,7 @@ type EcgReading = {
 export const Demo = () => {
     const [ecgData, setEcgData] = useState<EcgReading[]>([]);
     const [traditionalData, setTraditionalData] = useState<{ sweepLength: number, data: EcgReading[]; }>({ sweepLength: 0, data: [] });
-    const [timeDelta, setTimeDelta] = useState(0);
+    const [timeElapsed, setTimeElapsed] = useState(0);
     const [chartBounds, setChartBounds] = useState<{ min: number, max: number; }>({ min: Infinity, max: -Infinity });
 
     const INTERVAL_SECONDS = 15;
@@ -50,7 +50,7 @@ export const Demo = () => {
         const handle = setInterval(() => {
             const now = Date.now();
             const dif = now - then;
-            setTimeDelta(old => (old + dif));
+            setTimeElapsed(old => (old + dif));
             then = now;
         }, 1);
 
@@ -62,8 +62,15 @@ export const Demo = () => {
             // cullEcgData();
         });
 
+        const monitorResetListenerHandle = listen("reset-monitor", () => {
+            setEcgData([]);
+            setTraditionalData({ sweepLength: 0, data: [] });
+            setTimeElapsed(0);
+        });
+
         return () => {
             newReadingListenerHandle.then(unlisten => unlisten());
+            monitorResetListenerHandle.then(unlisten => unlisten());
             clearInterval(handle);
         };
     }, []);
@@ -74,8 +81,8 @@ export const Demo = () => {
                 return old;
             }
 
-            const lowerBound = Math.floor(timeDelta / INTERVAL_MILLIS) * INTERVAL_MILLIS + ecgData[0].milliseconds;
-            const upperBound = timeDelta + ecgData[0].milliseconds;
+            const lowerBound = Math.floor(timeElapsed / INTERVAL_MILLIS) * INTERVAL_MILLIS + ecgData[0].milliseconds;
+            const upperBound = timeElapsed + ecgData[0].milliseconds;
 
             let latest = 0;
 
@@ -95,10 +102,10 @@ export const Demo = () => {
                 data: [...left, ...old.data.filter(reading => reading.milliseconds > latest)]
             };
         });
-    }, [timeDelta]);
+    }, [timeElapsed]);
 
     const constrainToTimeRange = (arr: EcgReading[]) => {
-        const constrained = arr.filter(reading => reading.milliseconds < arr[0].milliseconds + timeDelta && reading.milliseconds > arr[arr.length - 1].milliseconds - INTERVAL_MILLIS);
+        const constrained = arr.filter(reading => reading.milliseconds < arr[0].milliseconds + timeElapsed && reading.milliseconds > arr[arr.length - 1].milliseconds - INTERVAL_MILLIS);
 
         return constrained;
     };
