@@ -184,9 +184,6 @@ export const Demo = () => {
                         curve="linear"
                         isInteractive={false}
                         enableSlices={false}
-                        theme={{
-                            axis: { ticks: { text: { fontSize: 14, color: 'white' } } },
-                        }}
                     />
                 </div>
             </div>
