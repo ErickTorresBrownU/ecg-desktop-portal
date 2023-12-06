@@ -136,8 +136,6 @@ fn main_backend(app_handle: AppHandle) {
                 continue;
             }
 
-            app_handle.emit_all("reset-monitor", ()).unwrap();
-
             let port_config = serialport::new(&ports.get(0).unwrap().port_name, 57600)
                 .timeout(Duration::from_secs(3));
 
@@ -149,6 +147,8 @@ fn main_backend(app_handle: AppHandle) {
                     csv_writer_been_flushed = false;
 
                     time_offsets = None;
+
+                    app_handle.emit_all("reset-monitor", ()).unwrap();
                 }
                 Err(_) => {
                     nullify_and_skip!(serial_port);
