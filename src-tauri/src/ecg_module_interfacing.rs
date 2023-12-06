@@ -109,6 +109,8 @@ pub fn main_loop(app_handle: AppHandle) {
     let mut csv_writer: Option<csv::Writer<File>> = None;
     let mut csv_writer_been_flushed = false;
 
+    // time_offsets.0 => Milliseconds since Arduino initialized from first valid reading for this session
+    // time_offsets.1 => Timestamp milliseconds when first valid reading was parsed for this session
     let mut time_offsets: Option<(i64, i64)> = None;
 
     const MAX_TIME_WITHOUT_VERIFICATION_MILLIS: u64 = 1000;
