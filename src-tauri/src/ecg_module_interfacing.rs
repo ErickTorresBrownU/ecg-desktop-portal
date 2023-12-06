@@ -47,7 +47,7 @@ fn read_line_from_serial(serial_port: &mut Option<Box<dyn SerialPort>>) -> Resul
             .read_exact(&mut one_byte_buffer)
             .is_err()
         {
-            dbg!("Failed to read into buffer");
+            eprintln!("Failed to read into buffer.");
 
             return Err(());
         }
@@ -160,7 +160,7 @@ pub fn main_loop(app_handle: AppHandle) {
             let ok_send_state = serial_port.as_mut().unwrap().write("OK\n".as_bytes());
 
             if ok_send_state.is_err() {
-                dbg!("Couldn't Write");
+                eprintln!("Failed to send OK message to Arduino.");
 
                 nullify_and_skip!(serial_port);
             }
