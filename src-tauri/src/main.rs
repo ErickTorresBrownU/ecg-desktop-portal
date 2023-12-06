@@ -106,13 +106,14 @@ macro_rules! nullify_and_skip {
 }
 
 fn main_backend(app_handle: AppHandle) {
+    let mut serial_port: Option<Box<dyn SerialPort>> = None;
+
+    let mut time_of_last_ok = Instant::now();
+
     let mut csv_writer: Option<csv::Writer<File>> = None;
     let mut csv_writer_been_flushed = false;
 
     let mut time_offsets: Option<(i64, i64)> = None;
-
-    let mut serial_port: Option<Box<dyn SerialPort>> = None;
-    let mut time_of_last_ok = Instant::now();
 
     const MAX_TIME_WITHOUT_VERIFICATION_MILLIS: u64 = 1000;
     const VERIFICATION_INTERVAL_MILLIS: u64 = MAX_TIME_WITHOUT_VERIFICATION_MILLIS / 2;
@@ -146,6 +147,8 @@ fn main_backend(app_handle: AppHandle) {
 
                     csv_writer = Some(csv::Writer::from_path(setup_csv_file()).unwrap());
                     csv_writer_been_flushed = false;
+
+                    time_offsets = None;
                 }
                 Err(_) => {
                     nullify_and_skip!(serial_port);
@@ -201,11 +204,6 @@ fn main_backend(app_handle: AppHandle) {
                 milliseconds: non_offset_reading.milliseconds - time_offsets.0 + time_offsets.1,
                 value: non_offset_reading.value,
             };
-
-            // let test = EcgReading {
-            //     milliseconds: Local::now().timestamp_millis(),
-            //     value: non_offset_reading.value,
-            // };
 
             app_handle
                 .emit_all("new-reading", non_offset_reading)
