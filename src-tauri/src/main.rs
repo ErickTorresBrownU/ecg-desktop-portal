@@ -159,9 +159,9 @@ fn main_backend(app_handle: AppHandle) {
         if time_of_last_ok.elapsed().as_millis() >= VERIFICATION_INTERVAL_MILLIS.into() {
             time_of_last_ok = Instant::now();
 
-            let ok_state = serial_port.as_mut().unwrap().write("OK\n".as_bytes());
+            let ok_send_state = serial_port.as_mut().unwrap().write("OK\n".as_bytes());
 
-            if ok_state.is_err() {
+            if ok_send_state.is_err() {
                 dbg!("Couldn't Write");
 
                 nullify_and_skip!(serial_port);
@@ -191,6 +191,7 @@ fn main_backend(app_handle: AppHandle) {
         }
 
         if let Ok(non_offset_reading) = parsed_entry {
+            // Store the time offsets for the first valid reading encountered
             if time_offsets.is_none() {
                 time_offsets = Some((
                     non_offset_reading.milliseconds,
